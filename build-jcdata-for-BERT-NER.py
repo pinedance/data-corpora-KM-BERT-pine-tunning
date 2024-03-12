@@ -69,7 +69,7 @@ old_id2label = {
 #%%
 old_label_list = list( old_id2label.values() )
 new_label = ["、", "《", "》"]
-new_label_list = old_id2label + new_label
+new_label_list = old_label_list + new_label
 id2label = { str(k):v for k,v in enumerate(new_label_list) }
 config["id2label"] = id2label 
 
