@@ -7,9 +7,13 @@ Original file is located at
 
 # %%
 import regex as re
-from collections import Counter
+from collections import Counter, ChainMap
 from os import path
 import json
+import requests
+
+#%%
+# bash download-jcdata.sh
 
 #%%
 IMPORT_DIR = path.join("rawdata")
@@ -36,8 +40,37 @@ def cleanhtml( raw_html ):
     text = re.sub( r'\n+', '\n', text )
     return text.strip()
 
+#%%
+char_dup_req = requests.get("https://kmapibox.mediclassics.kr/api/tn/dict/duplications?type=json", verify=False)
+char_var_custom_req = requests.get("https://kmapibox.mediclassics.kr/api/tn/dict/customvariants?type=json", verify=False)
+char_var_ext_req = requests.get("https://kmapibox.mediclassics.kr/api/tn/dict/customvariantsExtention?type=json", verify=False)
+
+#%%
+CHAR_DUP_SETS = char_dup_req.json()
+CHAR_VAR_CUSTOM_SETS = char_var_custom_req.json()
+CHAR_VAR_EXT_SETS = char_var_ext_req.json()
+
+#%%
+CHAR_DUP_TABLE = ChainMap( *[ str.maketrans(a, b) for a, b in CHAR_DUP_SETS ] ) 
+CHAR_VAR_CUSTOM_TABLE = ChainMap( *[ str.maketrans(a, b) for a, b in CHAR_VAR_CUSTOM_SETS ]) 
+CHAR_VAR_EXT_TABLE = ChainMap( *[ str.maketrans(a, b) for a, b in CHAR_VAR_EXT_SETS ]) 
+CHAR_ALL_TABLE = dict( ChainMap( CHAR_DUP_TABLE, CHAR_VAR_CUSTOM_TABLE, CHAR_VAR_EXT_TABLE ))
+
+#%%
+def cleanchar( text ):
+    text_ = text + ""
+    text_ = text_.translate( CHAR_ALL_TABLE )
+    # for a, b in CHAR_DUP_SETS:
+    #     text_ = text_.replace(a, b)
+    # for a, b in CHAR_VAR_CUSTOM_SETS:
+    #     text_ = text_.replace(a, b)
+    # for a, b in CHAR_VAR_EXT_SETS:
+    #     text_ = text_.replace(a, b)
+    return text_
+
 # %%
 booktext_ = cleanhtml( bookhtml )
+booktext_ = cleanchar( booktext_ )
 print( booktext_[0:100] )
 
 #%%
@@ -68,14 +101,35 @@ old_id2label = {
 
 #%%
 old_label_list = list( old_id2label.values() )
-new_label = ["、", "《", "》"]
+new_label = [
+    "、", 
+    # "《", "》"
+]
 new_label_list = old_label_list + new_label
 id2label = { str(k):v for k,v in enumerate(new_label_list) }
 config["id2label"] = id2label 
+config["label2id"] = {
+    "\"": 14,
+    "'": 10,
+    "O": 0,
+    "\u3002": 1,
+    "\u3010": 19,
+    "\u3011": 20,
+    "\uff01": 6,
+    "\uff08": 15,
+    "\uff09": 16,
+    "\uff0c": 2,
+    "\uff1a": 3,
+    "\uff1b": 4,
+    "\uff1f": 5,
+    "、": 21,
+    # "《": 22, 
+    # "》": 23
+},
 
 # %%
 replace_set = [
-    ("O", ""), 
+    # ("O", ""), 
     ("(", "（"), (")", "）"),
     (":", "："), (";", "；"),
     ("!", "！"), ("?", "？"),
@@ -101,6 +155,17 @@ for k in id2label.values():
 punc_list = list( sorted( set( id2label.values() ) ) )
 re_punc_raw = '[' + ''.join( punc_list ) + ']'
 RE_PUNC = re.compile( re_punc_raw )
+
+punc_list_not_O = punc_list.copy()
+punc_list_not_O.remove("O")
+re_punc_not_O_raw = '[' + ''.join( punc_list_not_O ) + ']'
+RE_PUNC_NOT_O = re.compile( re_punc_not_O_raw )
+
+print( punc_list )
+
+#%%
+puncs_lg_2 = Counter( re.findall( re.compile( '[' + ''.join( punc_list_not_O ) + ']+' ), booktext )  )
+print( puncs_lg_2 )
 
 #%%
 def filter_booklines( raw_booklines ):
@@ -136,13 +201,13 @@ def divide_bookline( org_bookline ):
     l2 = list( org_bookline[1:] ) + ["<END>"]
     r1, r2 = list(), list()
     for a, b in list( zip( l1, l2 ) ):
-        if a in punc_list:
+        if a in punc_list_not_O:
             continue
         else:
             if b == "<END>":
                 r1.append( a )
                 r2.append( "O" )
-            elif b not in punc_list:
+            elif b not in punc_list_not_O:
                 r1.append( a )
                 r2.append( "O" )
             elif b in punc_list:
@@ -209,3 +274,4 @@ for e in file_handlers:
 # %%
 with open( path.join(EXPORT_DIR, "config.json"), "w", encoding="UTF-8") as fl:
     json.dump(config, fl, ensure_ascii = False) 
+# %%
