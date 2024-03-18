@@ -102,7 +102,7 @@ old_id2label = {
 #%%
 old_label_list = list( old_id2label.values() )
 new_label = [
-    "、", 
+    # "、", 
     # "《", "》"
 ]
 new_label_list = old_label_list + new_label
@@ -121,8 +121,8 @@ config["label2id"] = {
     "\uff0c": 2,
     "\uff1a": 3,
     "\uff1b": 4,
-    "\uff1f": 5,
-    "、": 21,
+    "\uff1f": 5
+    # "、": 21,
     # "《": 22, 
     # "》": 23
 },
