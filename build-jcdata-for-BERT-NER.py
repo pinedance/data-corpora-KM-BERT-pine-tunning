@@ -180,13 +180,15 @@ def filter_booklines( raw_booklines ):
 
     rst2 = list()
     for line in rst1:
-        if len( line.strip() ) == 0: # space line
+        line_exclude_space = re.sub(r'\s+', "", line )
+        line_striped = line_exclude_space.strip()
+        if len( line_striped ) == 0: # space line
             continue
-        if len(line) < TEXT_LEN_MIN:
+        if len(line_striped) < TEXT_LEN_MIN:
             continue
-        if len(line) > TEXT_LEN_MAX:
+        if len(line_striped) > TEXT_LEN_MAX:
             continue
-        rst2.append( line )
+        rst2.append( line_striped )
 
     return rst2
 
